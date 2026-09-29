@@ -1,0 +1,5 @@
+Machine Learning Basics
+Supervised learning trains a model on labeled examples so it can predict outputs for new inputs.
+Overfitting happens when a model memorises training data and performs poorly on unseen data. Regularisation, more data, and early stopping reduce it.
+Gradient descent minimises a loss function by updating weights in the opposite direction of the gradient: w = w - lr * dLoss/dw. A learning rate that is too large can cause divergence.
+The bias-variance trade-off balances underfitting (high bias) and overfitting (high variance).

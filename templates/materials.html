@@ -1,0 +1,101 @@
+{% extends "base.html" %}{% block content %}<h3>Study Materials</h3>
+<div class="cardx"><form method="post" enctype="multipart/form-data" class="row g-2" id="uploadForm" onsubmit="return validateUpload(event)">
+<div class="col-md-4"><input type="file" name="file" id="fileInput" accept=".pdf,.txt" class="form-control" onchange="updateFileInfo()"></div>
+<div class="col-md-5"><input name="topic" class="form-control" placeholder="...or type a topic / paste notes"></div>
+<div class="col-md-3"><button class="btn btn-primary w-100" id="uploadBtn">Add material</button></div></form>
+<div id="fileInfo" class="mt-2 text-muted small"></div>
+<div id="uploadError" class="mt-2 alert alert-danger" style="display:none;"></div>
+<div class="mt-2 text-muted small">Upload your study material (PDF or TXT). Maximum file size: 20 MB. PDF limit: 100 pages. For best results, upload text-based PDFs.</div>
+</div>
+{% for m in items %}<div class="cardx">
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+<b class="me-auto">{{ m.name }}</b>
+<a class="btn btn-sm btn-light" href="{{ url_for('summary', mid=m.id) }}">Open</a>
+<form method="post" action="{{ url_for('delete', mid=m.id) }}" onsubmit="return confirm('Delete?')"><button class="btn btn-sm btn-outline-danger">Delete</button></form>
+</div>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+<button class="btn btn-sm btn-outline-primary" onclick="go(this,{{ m.id }},'summary')">Summarize Notes</button>
+<button class="btn btn-sm btn-success" onclick="go(this,{{ m.id }},'full',{n:+$('n{{ m.id }}').value})">Full workflow</button>
+</div>
+<div class="border-top pt-3">
+<h6 class="mb-2">Quiz Settings</h6>
+<label class="form-label small mb-1">Number of Questions</label>
+<p class="text-muted small mb-2">Choose how many questions you want in your practice quiz.</p>
+<div class="d-flex flex-wrap align-items-center gap-2">
+<select id="n{{ m.id }}" class="form-select form-select-sm w-auto" onchange="updateQuizLabel({{ m.id }})"><option>5</option><option>10</option><option>15</option></select>
+<button id="quizBtn{{ m.id }}" class="btn btn-sm btn-primary" onclick="go(this,{{ m.id }},'quiz',{n:+$('n{{ m.id }}').value})">Generate Quiz (5 Questions)</button>
+<button class="btn btn-sm btn-warning" onclick="go(this,{{ m.id }},'quiz',{weak:true,n:+$('n{{ m.id }}').value})">Weak-topic quiz</button>
+</div>
+</div>
+</div>
+{% else %}<p class="text-muted">No materials yet.</p>{% endfor %}{% endblock %}
+{% block scripts %}
+<script>
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+const ALLOWED_EXTENSIONS = ['pdf', 'txt'];
+
+function updateFileInfo() {
+  const input = document.getElementById('fileInput');
+  const info = document.getElementById('fileInfo');
+  const error = document.getElementById('uploadError');
+  error.style.display = 'none';
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    info.innerHTML = '<i class="bi bi-file-earmark"></i> ' + file.name + ' (' + sizeMB + ' MB)';
+  } else {
+    info.innerHTML = '';
+  }
+}
+
+function updateQuizLabel(mid) {
+  const select = document.getElementById('n' + mid);
+  const btn = document.getElementById('quizBtn' + mid);
+  if (select && btn) {
+    btn.textContent = 'Generate Quiz (' + select.value + ' Questions)';
+  }
+}
+
+function validateUpload(event) {
+  const input = document.getElementById('fileInput');
+  const error = document.getElementById('uploadError');
+  const topic = document.querySelector('input[name="topic"]').value.trim();
+
+  // If topic is provided, no file validation needed
+  if (topic) return true;
+
+  if (!input.files || !input.files[0]) {
+    error.textContent = 'Please select a file or type a topic.';
+    error.style.display = 'block';
+    return false;
+  }
+
+  const file = input.files[0];
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  // Validate extension
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    error.textContent = 'Unsupported file format. Please upload a PDF or TXT file.';
+    error.style.display = 'block';
+    return false;
+  }
+
+  // Validate file size
+  if (file.size > MAX_FILE_SIZE) {
+    error.textContent = 'File exceeds the maximum allowed size of 20 MB.';
+    error.style.display = 'block';
+    return false;
+  }
+
+  // Validate not empty
+  if (file.size === 0) {
+    error.textContent = 'The selected file is empty.';
+    error.style.display = 'block';
+    return false;
+  }
+
+  error.style.display = 'none';
+  return true;
+}
+</script>
+{% endblock %}

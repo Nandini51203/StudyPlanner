@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block content %}<h3>My Progress</h3>
+<div class="row"><div class="col-md-6"><div class="cardx"><h6>Score history</h6><canvas id="line"></canvas></div></div>
+<div class="col-md-6"><div class="cardx"><h6>Topic accuracy</h6><canvas id="bar"></canvas></div></div></div>
+<div class="cardx"><h6>Topics (labels are progress indicators, not judgments)</h6>
+{% for t in topics %}<div>{{ t.topic }} — {{ t.accuracy }}% ({{ t.total }} answers) <span class="badge bg-primary">{{ t.status }}</span></div>{% else %}<p class="text-muted">Take a quiz to see data.</p>{% endfor %}
+{% if topics|selectattr('status','equalto','Needs Revision')|list %}<p class="mt-2"><b>Revise:</b> {{ topics|selectattr('status','equalto','Needs Revision')|map(attribute='topic')|join(', ') }}</p>{% endif %}</div>
+{% endblock %}{% block scripts %}<script>drawLine("line", {{ scores|tojson }}); drawBar("bar", {{ topics|tojson }})</script>{% endblock %}

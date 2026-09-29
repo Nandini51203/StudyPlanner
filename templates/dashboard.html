@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block content %}
+<h3>Welcome back 👋</h3><p class="text-muted">Upload notes, summarize, quiz yourself, and track progress.</p>
+<div class="row">{% for l, v in [("Materials", n_mat), ("Quizzes attempted", n_att), ("Average score", avg ~ "%"), ("Weak topics", weak)] %}
+<div class="col-md-3"><div class="cardx"><div class="text-muted">{{ l }}</div><div class="stat">{{ v }}</div></div></div>{% endfor %}</div>
+<div class="row"><div class="col-md-7"><div class="cardx"><h6>Performance</h6><canvas id="line"></canvas></div></div>
+<div class="col-md-5"><div class="cardx"><h6>Recent activity</h6>
+{% for r in recent %}<div class="border-bottom py-2"><a href="{{ url_for('results', aid=r.id) }}">{{ r.name }}</a> — {{ r.score }}/{{ r.total }} <small class="text-muted">{{ r.created }}</small></div>{% else %}<p class="text-muted">No quizzes yet.</p>{% endfor %}
+<a class="btn btn-primary mt-3" href="{{ url_for('materials') }}">Upload / Generate Quiz</a> <a class="btn btn-outline-primary mt-3" href="{{ url_for('progress') }}">View Progress</a></div></div></div>
+{% endblock %}{% block scripts %}<script>drawLine("line", {{ scores|tojson }})</script>{% endblock %}
