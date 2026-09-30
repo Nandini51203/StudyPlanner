@@ -5,4 +5,5 @@ body{background:#f5f6fa;font-family:system-ui,sans-serif}
 main{margin-left:220px;padding:28px}
 .cardx{background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 12px #0001;margin-bottom:20px}
 .stat{font-size:2rem;font-weight:700;color:#4f46e5}
+.avatar{width:56px;height:56px;border-radius:50%;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.25rem;flex-shrink:0}
 @media(max-width:768px){.side{position:static;width:auto}main{margin-left:0}}

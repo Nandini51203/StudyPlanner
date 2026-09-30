@@ -1,0 +1,176 @@
+{% extends "base.html" %}{% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+  <div>
+    <h3><i class="bi bi-calendar-week"></i> {{ p.title }}</h3>
+    <p class="text-muted mb-0">
+      {{ p.daily_minutes }} min/day · {{ p.days_available }} days
+      {% if p.exam_date %}· Exam {{ p.exam_date }}{% endif %}
+      {% if plan_source == 'ai' %}
+        <span class="badge bg-info ms-1"><i class="bi bi-stars"></i> AI Personalized</span>
+      {% else %}
+        <span class="badge bg-secondary ms-1"><i class="bi bi-cpu"></i> Smart Planning</span>
+      {% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-sm btn-outline-primary" onclick="regenerateRemaining({{ p.id }})"><i class="bi bi-arrow-clockwise"></i> Regenerate Remaining</button>
+    <a href="{{ url_for('planner') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> All plans</a>
+  </div>
+</div>
+
+{% if not p.has_performance_data %}
+<div class="alert alert-info mt-3"><i class="bi bi-info-circle"></i> No quiz performance data yet — this plan is based on your syllabus or uploaded material. Take a few quizzes and future plans will automatically prioritize your weak topics.</div>
+{% endif %}
+
+{% if warnings %}
+<div class="alert alert-warning mt-3"><i class="bi bi-exclamation-triangle"></i>
+  {% for w in warnings %}<div>{{ w }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<div class="cardx mt-3">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <h6 class="mb-0">Progress</h6>
+    <span class="text-muted small" id="progressLabel">{{ done }}/{{ total }} tasks completed ({{ (done * 100 / total) if total else 0 }}%)</span>
+  </div>
+  <div class="progress mt-2" style="height:10px"><div id="planProgress" class="progress-bar bg-success" style="width:{{ (done * 100 / total) if total else 0 }}%"></div></div>
+  <div class="d-flex justify-content-between text-muted small mt-2">
+    <span>{{ "%.1f"|format(total_min / 60) }} hours planned</span>
+    <span id="remainingLabel">{{ total - done }} tasks remaining</span>
+    {% if p.exam_date %}
+    <span>{% if countdown >= 0 %}<span class="badge bg-primary">{{ countdown }} days left</span>{% else %}<span class="badge bg-secondary">Exam date passed</span>{% endif %}</span>
+    {% endif %}
+  </div>
+</div>
+
+{% if p.notes %}<p class="text-muted small mt-3"><i class="bi bi-robot"></i> {{ p.notes }}</p>{% endif %}
+
+{% for day_num, day in days|dictsort %}
+<div class="cardx">
+  <div class="d-flex justify-content-between align-items-center">
+    <h6 class="mb-0">Day {{ day_num }} <span class="text-muted fw-normal small">{{ day.date }}</span></h6>
+    <span class="text-muted small">{{ day.tasks|sum(attribute='duration_minutes') }} min</span>
+  </div>
+  {% for t in day.tasks %}
+  <div class="d-flex align-items-start gap-2 border-bottom py-2{% if loop.last %} border-bottom-0{% endif %}">
+    <input type="checkbox" class="form-check-input mt-1 task-check" {% if t.completed %}checked{% endif %}
+      onchange="toggleTask(this, {{ p.id }}, {{ t.id }})" title="Mark as completed">
+    <div class="flex-grow-1">
+      <b class="task-topic" {% if t.completed %}style="text-decoration:line-through;color:#999"{% endif %}>{{ t.topic }}</b>
+      <span class="badge bg-light text-dark ms-1">{{ t.activity }}</span>
+      <div class="text-muted small">{{ t.description }}</div>
+    </div>
+    <span class="badge bg-{{ 'danger' if t.priority == 'high' else 'warning text-dark' if t.priority == 'medium' else 'secondary' }}">{{ t.priority }}</span>
+    <span class="badge bg-light text-dark">{{ t.duration_minutes }} min</span>
+    <div class="btn-group btn-group-sm">
+      <button class="btn btn-outline-secondary" onclick="editTask({{ p.id }}, {{ t.id }}, '{{ t.topic|escape }}', '{{ t.description|escape }}', {{ t.duration_minutes }}, '{{ t.activity }}', '{{ t.priority }}')" title="Edit task"><i class="bi bi-pencil"></i></button>
+      <button class="btn btn-outline-danger" onclick="deleteTask({{ p.id }}, {{ t.id }})" title="Delete task"><i class="bi bi-trash"></i></button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="cardx text-muted">This plan has no tasks.</div>
+{% endfor %}
+
+<!-- Add Task Modal -->
+<div class="modal fade" id="addTaskModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Add Task</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label small">Topic</label>
+        <input type="text" id="newTaskTopic" class="form-control mb-2" maxlength="120">
+        <label class="form-label small">Description</label>
+        <input type="text" id="newTaskDesc" class="form-control mb-2" maxlength="500">
+        <div class="row">
+          <div class="col-md-4">
+            <label class="form-label small">Duration (min)</label>
+            <input type="number" id="newTaskDur" class="form-control mb-2" value="30" min="5" max="480">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Activity</label>
+            <select id="newTaskAct" class="form-select mb-2">
+              <option value="read">Read</option>
+              <option value="revise">Revise</option>
+              <option value="practice">Practice</option>
+              <option value="quiz">Quiz</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Priority</label>
+            <select id="newTaskPri" class="form-select mb-2">
+              <option value="high">High</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="addTask({{ p.id }})">Add Task</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div class="modal fade" id="editTaskModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Edit Task</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editTaskId">
+        <label class="form-label small">Topic</label>
+        <input type="text" id="editTaskTopic" class="form-control mb-2" maxlength="120">
+        <label class="form-label small">Description</label>
+        <input type="text" id="editTaskDesc" class="form-control mb-2" maxlength="500">
+        <div class="row">
+          <div class="col-md-4">
+            <label class="form-label small">Duration (min)</label>
+            <input type="number" id="editTaskDur" class="form-control mb-2" min="5" max="480">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Activity</label>
+            <select id="editTaskAct" class="form-select mb-2">
+              <option value="read">Read</option>
+              <option value="revise">Revise</option>
+              <option value="practice">Practice</option>
+              <option value="quiz">Quiz</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Priority</label>
+            <select id="editTaskPri" class="form-select mb-2">
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveTaskEdit({{ p.id }})">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-2 mt-3">
+  <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTaskModal"><i class="bi bi-plus-lg"></i> Add Task</button>
+  <form method="post" action="{{ url_for('plan_delete', pid=p.id)}}" onsubmit="return confirm('Delete this study plan? This cannot be undone.')">
+    <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Delete plan</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/planner.js') }}"></script>
+{% endblock %}

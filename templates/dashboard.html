@@ -1,9 +1,161 @@
 {% extends "base.html" %}{% block content %}
-<h3>Welcome back 👋</h3><p class="text-muted">Upload notes, summarize, quiz yourself, and track progress.</p>
-<div class="row">{% for l, v in [("Materials", n_mat), ("Quizzes attempted", n_att), ("Average score", avg ~ "%"), ("Weak topics", weak)] %}
-<div class="col-md-3"><div class="cardx"><div class="text-muted">{{ l }}</div><div class="stat">{{ v }}</div></div></div>{% endfor %}</div>
-<div class="row"><div class="col-md-7"><div class="cardx"><h6>Performance</h6><canvas id="line"></canvas></div></div>
-<div class="col-md-5"><div class="cardx"><h6>Recent activity</h6>
-{% for r in recent %}<div class="border-bottom py-2"><a href="{{ url_for('results', aid=r.id) }}">{{ r.name }}</a> — {{ r.score }}/{{ r.total }} <small class="text-muted">{{ r.created }}</small></div>{% else %}<p class="text-muted">No quizzes yet.</p>{% endfor %}
-<a class="btn btn-primary mt-3" href="{{ url_for('materials') }}">Upload / Generate Quiz</a> <a class="btn btn-outline-primary mt-3" href="{{ url_for('progress') }}">View Progress</a></div></div></div>
-{% endblock %}{% block scripts %}<script>drawLine("line", {{ scores|tojson }})</script>{% endblock %}
+<h3>Welcome back 👋</h3>
+<p class="text-muted">Your personalized study hub — track progress, plan your day, and stay on top of your exams.</p>
+
+<!-- ── ROW 1: Metric Cards ─────────────────────────────────────── -->
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="cardx text-center h-100"><div class="text-muted small mb-1">Materials</div><div class="stat">{{ n_mat }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="cardx text-center h-100"><div class="text-muted small mb-1">Quizzes Attempted</div><div class="stat">{{ n_att }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="cardx text-center h-100"><div class="text-muted small mb-1">Average Score</div><div class="stat">{{ avg }}%</div></div></div>
+  <div class="col-6 col-md-3"><div class="cardx text-center h-100"><div class="text-muted small mb-1">Weak Topics</div><div class="stat">{{ weak }}</div></div></div>
+</div>
+
+<!-- ── ROW 2: Performance Chart + Today's Study Plan ──────────── -->
+<div class="row g-3 mb-3">
+  <div class="col-md-7">
+    <div class="cardx h-100">
+      <h6><i class="bi bi-graph-up"></i> Performance</h6>
+      {% if scores %}
+      <canvas id="line" height="180"></canvas>
+      {% else %}
+      <div class="d-flex align-items-center justify-content-center text-muted" style="min-height:180px">
+        <div class="text-center"><i class="bi bi-graph-up" style="font-size:2rem;opacity:.3"></i><p class="mb-0 mt-2">No quiz attempts yet</p></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="cardx h-100">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0"><i class="bi bi-calendar-day"></i> Today's Study Plan</h6>
+        <a href="{{ url_for('planner') }}" class="btn btn-sm btn-outline-primary">View Full Plan</a>
+      </div>
+      {% if today_tasks %}
+      <div class="progress mb-2" style="height:6px"><div class="progress-bar bg-success" style="width:{{ (today_done * 100 / today_total) if today_total else 0 }}%"></div></div>
+      <div class="text-muted small mb-2">{{ today_done }} of {{ today_total }} tasks completed</div>
+      <div style="max-height:180px;overflow-y:auto">
+      {% for t in today_tasks %}
+      <div class="d-flex align-items-center gap-2 py-1 border-bottom">
+        <input type="checkbox" class="form-check-input task-check" {% if t.completed %}checked{% endif %}
+          onchange="toggleTask(this, {{ t.plan_id }}, {{ t.id }})" title="Mark as completed">
+        <span class="flex-grow-1 {% if t.completed %}text-muted{% endif %}" {% if t.completed %}style="text-decoration:line-through"{% endif %}>
+          {{ t.topic }} <span class="badge bg-light text-dark">{{ t.activity }}</span>
+          <small class="text-muted">{{ t.duration_minutes }} min</small>
+        </span>
+        <span class="badge bg-{{ 'danger' if t.priority == 'high' else 'warning text-dark' if t.priority == 'medium' else 'secondary' }}">{{ t.priority }}</span>
+      </div>
+      {% endfor %}
+      </div>
+      {% else %}
+      <div class="d-flex align-items-center justify-content-center text-muted" style="min-height:180px">
+        <div class="text-center">
+          <i class="bi bi-calendar-day" style="font-size:2rem;opacity:.3"></i>
+          <p class="mb-2 mt-2">No study plan for today</p>
+          <a href="{{ url_for('planner') }}" class="btn btn-sm btn-primary">Create Study Plan</a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ── ROW 3: Upcoming Exam + Recommended Next Step ───────────── -->
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="cardx h-100">
+      <h6><i class="bi bi-alarm"></i> Upcoming Exam</h6>
+      {% if upcoming_exam %}
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <b>{{ upcoming_exam.title }}</b>
+          <div class="text-muted small">{{ upcoming_exam.exam_date }}</div>
+        </div>
+        <div class="text-center">
+          <div class="stat mb-0">{{ exam_countdown }}</div>
+          <div class="text-muted small">days left</div>
+        </div>
+      </div>
+      <a href="{{ url_for('plan_detail', pid=upcoming_exam.id) }}" class="btn btn-sm btn-outline-primary mt-2">View Plan</a>
+      {% else %}
+      <div class="d-flex align-items-center justify-content-center text-muted" style="min-height:100px">
+        <div class="text-center">
+          <p class="mb-2">No upcoming exam scheduled</p>
+          <a href="{{ url_for('planner') }}" class="btn btn-sm btn-primary">Create Study Plan</a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="cardx h-100">
+      <h6><i class="bi bi-lightbulb"></i> Recommended for You</h6>
+      {% if recommendation %}
+      <b>Revise {{ recommendation.topic }}</b>
+      <p class="text-muted small mb-2">{{ recommendation.reason }}</p>
+      <a href="{{ url_for('progress') }}" class="btn btn-sm btn-outline-primary">Start Revision</a>
+      {% else %}
+      <div class="d-flex align-items-center justify-content-center text-muted" style="min-height:100px">
+        <div class="text-center">
+          <i class="bi bi-lightbulb" style="font-size:2rem;opacity:.3"></i>
+          <p class="mb-0 mt-2">Complete your first quiz to receive personalized recommendations</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ── ROW 4: Study Progress + Recent Activity ────────────────── -->
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="cardx h-100">
+      <h6><i class="bi bi-bar-chart"></i> Study Progress</h6>
+      {% if total_tasks %}
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="stat mb-0">{{ progress_pct }}%</span>
+        <span class="text-muted small">{{ done_tasks }} of {{ total_tasks }} tasks</span>
+      </div>
+      <div class="progress" style="height:8px"><div class="progress-bar bg-success" style="width:{{ progress_pct }}%"></div></div>
+      <div class="text-muted small mt-2">{{ remaining_tasks }} tasks remaining</div>
+      {% else %}
+      <div class="d-flex align-items-center justify-content-center text-muted" style="min-height:100px">
+        <div class="text-center">
+          <i class="bi bi-bar-chart" style="font-size:2rem;opacity:.3"></i>
+          <p class="mb-0 mt-2">No study plans yet — create a plan to track progress</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="cardx h-100">
+      <h6><i class="bi bi-clock-history"></i> Recent Activity</h6>
+      {% if recent %}
+      <div style="max-height:120px;overflow-y:auto">
+      {% for a in recent %}
+      <div class="d-flex align-items-center gap-2 py-1 border-bottom">
+        <i class="bi {{ a.icon }} {{ a.color }}"></i>
+        <span class="flex-grow-1">{{ a.text }}</span>
+        <small class="text-muted">{{ a.date[:10] }}</small>
+      </div>
+      {% endfor %}
+      </div>
+      {% else %}
+      <div class="d-flex align-items-center justify-content-center text-muted" style="min-height:100px">
+        <div class="text-center">
+          <i class="bi bi-clock-history" style="font-size:2rem;opacity:.3"></i>
+          <p class="mb-0 mt-2">No recent activity — start by uploading notes</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-2">
+  <a class="btn btn-primary" href="{{ url_for('materials') }}">Upload / Generate Quiz</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('progress') }}">View Progress</a>
+</div>
+{% endblock %}{% block scripts %}
+<script>drawLine("line", {{ scores|tojson }})</script>
+<script src="{{ url_for('static', filename='js/planner.js') }}"></script>{% endblock %}

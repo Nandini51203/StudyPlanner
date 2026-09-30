@@ -3,7 +3,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4>{{ s.title }}</h4>
   <div>
-    <button class="btn btn-sm btn-outline-primary" onclick="downloadNotes()"><i class="bi bi-download"></i> Download Notes</button>
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_summary_pdf', mid=m.id) }}"><i class="bi bi-download"></i> Download as PDF</a>
     <button class="btn btn-sm btn-primary" onclick="go(this,{{ m.id }},'summary')">{{ 'Regenerate' if s else 'Generate' }} summary</button>
   </div>
 </div>
@@ -27,66 +27,3 @@
 <button class="btn btn-primary" onclick="go(this,{{ m.id }},'summary')">Generate summary</button>
 {% endif %}
 {% if quiz_id %}<a class="btn btn-success" href="{{ url_for('quiz', qid=quiz_id) }}">Take latest quiz</a>{% endif %}{% endblock %}
-{% block scripts %}
-<script>
-function downloadNotes() {
-  const s = {{ s|tojson }};
-  let content = '# ' + s.title + '\n\n';
-  content += '## Overview\n' + s.overview + '\n\n';
-
-  if (s.sections) {
-    for (const section of s.sections) {
-      content += '## ' + section.title + '\n' + section.content + '\n\n';
-    }
-  }
-
-  const sections = [
-    ['Key Concepts', 'key_concepts'],
-    ['Main Points', 'main_points'],
-    ['Formulas', 'formulas'],
-    ['Examples', 'examples'],
-    ['Processes', 'processes'],
-    ['Comparisons', 'comparisons'],
-    ['Advantages', 'advantages'],
-    ['Disadvantages', 'disadvantages']
-  ];
-
-  for (const [title, key] of sections) {
-    if (s[key] && s[key].length > 0) {
-      content += '## ' + title + '\n';
-      for (const item of s[key]) {
-        content += '- ' + item + '\n';
-      }
-      content += '\n';
-    }
-  }
-
-  if (s.definitions && s.definitions.length > 0) {
-    content += '## Definitions\n';
-    for (const d of s.definitions) {
-      if (typeof d === 'object') {
-        content += '- **' + d.term + '**: ' + d.meaning + '\n';
-      } else {
-        content += '- ' + d + '\n';
-      }
-    }
-    content += '\n';
-  }
-
-  if (s.revision_notes && s.revision_notes.length > 0) {
-    content += '## Quick Revision\n';
-    for (const item of s.revision_notes) {
-      content += '- ' + item + '\n';
-    }
-  }
-
-  const blob = new Blob([content], {type: 'text/markdown'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = s.title.replace(/[^a-z0-9]/gi, '_') + '_notes.md';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-</script>
-{% endblock %}

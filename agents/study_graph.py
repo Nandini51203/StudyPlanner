@@ -2,10 +2,10 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
 from agents import summarizer_agent, quiz_agent, weak_topic_agent
 class State(TypedDict, total=False):   # shared state passed between agents
-    stage: str; text: str; n: int; focus: list
+    stage: str; text: str; n: int; focus: list; style: str
     summary: dict; questions: list
     topic_rows: list; analysis: list; recommendations: list
-def summarize(s): return {"summary": summarizer_agent.run(s["text"])}
+def summarize(s): return {"summary": summarizer_agent.run(s["text"], s.get("style", "detailed"))}
 def make_quiz(s):
     # Use original text for quiz generation (not the summary) for better question quality
     return {"questions": quiz_agent.generate(s["text"], s.get("n", 5), s.get("focus"))}

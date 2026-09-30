@@ -22,8 +22,8 @@
 <label class="form-label small mb-1">Number of Questions</label>
 <p class="text-muted small mb-2">Choose how many questions you want in your practice quiz.</p>
 <div class="d-flex flex-wrap align-items-center gap-2">
-<select id="n{{ m.id }}" class="form-select form-select-sm w-auto" onchange="updateQuizLabel({{ m.id }})"><option>5</option><option>10</option><option>15</option></select>
-<button id="quizBtn{{ m.id }}" class="btn btn-sm btn-primary" onclick="go(this,{{ m.id }},'quiz',{n:+$('n{{ m.id }}').value})">Generate Quiz (5 Questions)</button>
+<select id="n{{ m.id }}" class="form-select form-select-sm w-auto" onchange="updateQuizLabel({{ m.id }})"><option value="5" {% if pref_n == 5 %}selected{% endif %}>5</option><option value="10" {% if pref_n == 10 %}selected{% endif %}>10</option><option value="15" {% if pref_n == 15 %}selected{% endif %}>15</option></select>
+<button id="quizBtn{{ m.id }}" class="btn btn-sm btn-primary" onclick="go(this,{{ m.id }},'quiz',{n:+$('n{{ m.id }}').value})">Generate Quiz ({{ pref_n }} Questions)</button>
 <button class="btn btn-sm btn-warning" onclick="go(this,{{ m.id }},'quiz',{weak:true,n:+$('n{{ m.id }}').value})">Weak-topic quiz</button>
 </div>
 </div>

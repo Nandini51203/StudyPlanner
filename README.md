@@ -11,6 +11,8 @@ Flask + LangChain (Gemini) + LangGraph + SQLite + Bootstrap/Chart.js. Runs in **
 - **Weak Topic Tracker** — Tracks topic-wise performance across attempts
 - **Progress Dashboard** — Charts and analytics for scores and topic mastery
 - **Multi-user** — Each user has their own materials, quizzes, and progress
+- **Profile Management** — Edit name/course, avatar with initials, learning preferences (summary style, quiz length, daily goal, study time), change password
+- **AI Study Planner** — Personalized day-by-day study plans from your material, syllabus, weak topics, and preferences; track task completion and exam countdown
 
 ## Tech Stack
 
@@ -44,6 +46,7 @@ multi_agent_study_assistant/
 │   ├── summarizer_agent.py # Notes -> structured summary
 │   ├── quiz_agent.py       # Generates MCQ quizzes
 │   ├── weak_topic_agent.py # Tracks topic performance
+│   ├── planner_agent.py    # Generates personalized study plans
 │   └── study_graph.py      # LangGraph orchestration
 │
 ├── database/               # Database layer
@@ -59,7 +62,8 @@ multi_agent_study_assistant/
 │   │   └── style.css       # Custom styles
 │   └── js/
 │       ├── main.js         # Main JS (API calls, navigation)
-│       └── charts.js       # Chart.js wrappers
+│       ├── charts.js       # Chart.js wrappers
+│       └── planner.js      # Study Planner (generate plan, toggle tasks)
 │
 ├── templates/              # Jinja2 HTML templates
 │   ├── base.html           # Base layout (sidebar nav, Bootstrap)
@@ -70,7 +74,10 @@ multi_agent_study_assistant/
 │   ├── summary.html        # View generated summary
 │   ├── quiz.html           # Take a quiz (JS-driven)
 │   ├── results.html        # Quiz results + feedback
-│   └── progress.html       # Progress charts & topic tracking
+│   ├── progress.html       # Progress charts & topic tracking
+│   ├── profile.html        # Profile, preferences, account settings
+│   ├── planner.html        # Study plan list + create form
+│   └── plan_detail.html    # Daily plan cards with task tracking
 │
 ├── instance/
 │   └── study.db            # SQLite database file (auto-created)
@@ -84,12 +91,15 @@ The SQLite database (`instance/study.db`) contains the following tables:
 
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
-| `users` | Registered users | `id`, `username`, `password_hash`, `email`, `created` |
+| `users` | Registered users | `id`, `username`, `password_hash`, `email`, `full_name`, `course`, `created` |
 | `materials` | Uploaded study materials | `id`, `user_id`, `name`, `content`, `created` |
 | `summaries` | AI-generated summaries per material | `material_id` (PK), `data` (JSON), `demo` flag |
 | `quizzes` | Generated quizzes per material | `id`, `material_id`, `questions` (JSON), `demo` flag |
 | `attempts` | Quiz attempts (scores) | `id`, `quiz_id`, `material_id`, `score`, `total`, `feedback` (JSON) |
 | `answers` | Individual answer records | `id`, `attempt_id`, `topic`, `selected`, `correct`, `is_correct` |
+| `user_preferences` | Learning preferences per user | `user_id` (PK), `summary_style`, `default_quiz_length`, `daily_study_goal_minutes`, `preferred_study_time` |
+| `study_plans` | Generated study plans | `id`, `user_id`, `title`, `exam_date`, `daily_minutes`, `days_available`, `material_id`, `has_performance_data`, `warnings`, `notes` |
+| `study_tasks` | Daily tasks within a plan | `id`, `plan_id`, `day_number`, `task_date`, `topic`, `description`, `duration_minutes`, `activity`, `priority`, `completed`, `completed_at` |
 
 **View:** `topic_performance` — aggregates answers by material and topic.
 
@@ -198,13 +208,17 @@ python app.py
 6. **View Results** — See your score, correct/incorrect answers, and AI feedback
 7. **Track Progress** — Visit "My Progress" to see charts and topic performance
 8. **Weak Topic Quiz** — Generate a quiz focused on your weak topics
-9. **Logout** — Click "Logout" in the sidebar when done
+9. **Manage Profile** — Visit "Profile" to edit your name/course, set learning preferences (summary style, quiz length, daily goal, study time), and change your password
+10. **Create a Study Plan** — Go to "Study Planner", click "Create Study Plan", enter your exam date and daily availability, and let the AI build a personalized daily schedule based on your material and weak topics
+11. **Track Your Plan** — Open a plan, mark tasks complete, and watch your progress bar update
+12. **Logout** — Click "Logout" in the sidebar when done
 
 ## Agents (separate modules, separate prompts and duties)
 
-- **Summarizer** (`agents/summarizer_agent.py`): notes -> structured summary, no invented facts.
+- **Summarizer** (`agents/summarizer_agent.py`): notes -> structured summary, no invented facts. Supports concise/detailed style from user preferences.
 - **Quiz Generator** (`agents/quiz_agent.py`): conceptual MCQs, validates JSON (4 options, 1 answer) and retries if malformed.
 - **Weak Topic Tracker** (`agents/weak_topic_agent.py`): rule-based classification over accumulated answers (needs 3+ answers per topic: >=75% Strong, >=50% Improving, else Needs Revision) + LLM/rule revision tips.
+- **Study Planner** (`agents/planner_agent.py`): builds a day-by-day study plan from uploaded material/syllabus, weak-topic data, exam date, and learning preferences. Validates output (daily budget, topic coverage) and falls back to a deterministic plan if the AI is unavailable.
 - **Orchestration** (`agents/study_graph.py`): LangGraph `StateGraph` with a shared state. START routes by stage: `summary`, `quiz`, `full` (summarize -> quiz), `evaluate` (track).
 
 ## Test each agent

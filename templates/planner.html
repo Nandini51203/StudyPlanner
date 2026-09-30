@@ -1,0 +1,119 @@
+{% extends "base.html" %}{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <div>
+    <h3><i class="bi bi-calendar-week"></i> Study Planner</h3>
+    <p class="text-muted mb-0">Generate a personalized daily study plan powered by AI.</p>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPlanModal"><i class="bi bi-plus-lg"></i> Create Study Plan</button>
+</div>
+
+{% if plans %}
+<div class="row">
+  {% for p in plans %}
+  <div class="col-md-6">
+    <div class="cardx">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h6 class="mb-1">{{ p.title }}</h6>
+          <div class="text-muted small">
+            Created {{ p.created[:10] }} · {{ p.daily_minutes }} min/day · {{ p.days_available }} days
+            {% if p.exam_date %}· Exam {{ p.exam_date }}{% endif %}
+          </div>
+          <div class="mt-1">
+            {% if p.plan_source == 'ai' %}
+              <span class="badge bg-info"><i class="bi bi-stars"></i> AI Personalized</span>
+            {% else %}
+              <span class="badge bg-secondary"><i class="bi bi-cpu"></i> Smart Planning</span>
+            {% endif %}
+          </div>
+        </div>
+        <span class="badge bg-{{ 'success' if p.n_tasks and p.n_done == p.n_tasks else 'primary' }}">{{ p.n_done }}/{{ p.n_tasks }} tasks</span>
+      </div>
+      <div class="progress mt-3" style="height:8px"><div class="progress-bar" style="width:{{ (p.n_done * 100 / p.n_tasks) if p.n_tasks else 0 }}%"></div></div>
+      <div class="d-flex gap-2 mt-3">
+        <a href="{{ url_for('plan_detail', pid=p.id) }}" class="btn btn-sm btn-primary">Open plan</a>
+        <form method="post" action="{{ url_for('plan_delete', pid=p.id) }}" onsubmit="return confirm('Delete this study plan? This cannot be undone.')">
+          <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="cardx text-center text-muted">
+  <i class="bi bi-calendar-week" style="font-size:2rem"></i>
+  <p class="mt-2 mb-0">No study plans yet. Create your first plan to get a personalized daily schedule.</p>
+</div>
+{% endif %}
+
+<!-- Create Plan Modal -->
+<div class="modal fade" id="createPlanModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Create Study Plan</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="planError" class="alert alert-danger" style="display:none"></div>
+        <label class="form-label small">Plan title / subject <span class="text-danger">*</span></label>
+        <input type="text" id="planTitle" class="form-control mb-2" placeholder="e.g. Data Structures — Midterm Prep" maxlength="120">
+        <div class="row">
+          <div class="col-md-6">
+            <label class="form-label small">Exam / target date</label>
+            <input type="date" id="planExamDate" class="form-control mb-2">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Available study time per day (minutes)</label>
+            <input type="number" id="planDailyMinutes" class="form-control mb-2" min="15" max="720" value="{{ prefs.daily_study_goal_minutes }}">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <label class="form-label small">Preferred study time</label>
+            <select id="planStudyTime" class="form-select mb-2">
+              <option value="morning" {% if prefs.preferred_study_time == 'morning' %}selected{% endif %}>Morning</option>
+              <option value="afternoon" {% if prefs.preferred_study_time == 'afternoon' %}selected{% endif %}>Afternoon</option>
+              <option value="evening" {% if prefs.preferred_study_time == 'evening' %}selected{% endif %}>Evening</option>
+              <option value="flexible" {% if prefs.preferred_study_time == 'flexible' %}selected{% endif %}>Flexible</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Study days per week</label>
+            <select id="planDaysPerWeek" class="form-select mb-2">
+              <option value="7" selected>Every day</option>
+              <option value="6">6 days</option>
+              <option value="5">5 days (weekdays)</option>
+              <option value="4">4 days</option>
+              <option value="3">3 days</option>
+              <option value="2">2 days</option>
+              <option value="1">1 day</option>
+            </select>
+          </div>
+        </div>
+        <label class="form-label small">Base plan on study material (optional)</label>
+        <select id="planMaterial" class="form-select mb-2">
+          <option value="">— None —</option>
+          {% for m in materials %}
+          <option value="{{ m.id }}">{{ m.name }}</option>
+          {% endfor %}
+        </select>
+        <label class="form-label small">Syllabus / topics (optional — one per line)</label>
+        <textarea id="planTopics" class="form-control" rows="4" placeholder="e.g.&#10;Arrays and Linked Lists&#10;Stacks and Queues&#10;Trees and Graphs"></textarea>
+        <div class="text-muted small mt-2">
+          <i class="bi bi-info-circle"></i> Weak topics from your quiz history are included automatically.
+          If you haven't attempted any quizzes yet, the plan will be built from your material or syllabus.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="generatePlanBtn" class="btn btn-primary" onclick="generatePlan(this)"><i class="bi bi-magic"></i> Generate Plan</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/planner.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,46 @@
+Data Structures and Algorithms — Complete Study Guide
+
+1. Arrays
+Arrays store elements in contiguous memory locations. Access time is O(1) by index. Insertion and deletion take O(n) in the worst case because elements must be shifted. Common operations include traversal, searching, and sorting. Two-pointer techniques and sliding window patterns are frequently applied to array problems.
+
+2. Linked Lists
+A linked list is a linear data structure where elements are stored in nodes, and each node points to the next node. Singly linked lists have one pointer per node; doubly linked lists have two. Insertion and deletion at a known position take O(1), but searching takes O(n). Common problems include reversal, cycle detection, and merging sorted lists.
+
+3. Trees
+A tree is a hierarchical data structure with a root node and child nodes. A binary tree has at most two children per node. Binary search trees (BSTs) maintain order: left subtree values are smaller, right subtree values are larger. Tree traversals include inorder, preorder, postorder (DFS) and level-order (BFS). Balanced trees like AVL and Red-Black trees guarantee O(log n) operations.
+
+4. Graphs
+A graph consists of vertices (nodes) and edges connecting them. Graphs can be directed or undirected, weighted or unweighted. Common representations are adjacency lists and adjacency matrices. Traversal algorithms include Breadth-First Search (BFS) and Depth-First Search (DFS). Shortest path algorithms include Dijkstra's and Bellman-Ford. Minimum spanning trees use Kruskal's or Prim's algorithm.
+
+5. Stacks and Queues
+A stack follows Last-In-First-Out (LIFO) order. Operations are push and pop, both O(1). Stacks are used in function calls, expression evaluation, and backtracking. A queue follows First-In-First-Out (FIFO) order. Operations are enqueue and dequeue, both O(1). Queues are used in BFS, task scheduling, and buffering. A deque supports insertion and removal from both ends.
+
+6. Hashing
+A hash table maps keys to values using a hash function. Average lookup, insertion, and deletion are O(1). Collisions are resolved by chaining (linked lists) or open addressing (probing). A good hash function distributes keys uniformly. Load factor affects performance; resizing maintains efficiency. Hash tables implement dictionaries, caches, and sets.
+
+7. Dynamic Programming
+Dynamic programming solves problems by breaking them into overlapping subproblems and storing results to avoid recomputation. Key principles are optimal substructure and overlapping subproblems. Approaches include top-down (memoization) and bottom-up (tabulation). Classic problems include the knapsack problem, longest common subsequence, and edit distance. Time complexity is typically polynomial.
+
+8. Sorting Algorithms
+Comparison-based sorts include bubble sort (O(n²)), selection sort (O(n²)), insertion sort (O(n²)), merge sort (O(n log n)), and quicksort (O(n²) worst, O(n log n) average). Non-comparison sorts include counting sort, radix sort, and bucket sort (O(n+k)). Stability matters when sorting objects with multiple keys. In-place sorts use O(1) extra space.
+
+9. Searching Algorithms
+Linear search checks each element sequentially — O(n). Binary search requires sorted data and halves the search space each step — O(log n). Depth-First Search (DFS) and Breadth-First Search (BFS) traverse graphs and trees. Ternary search finds the maximum of a unimodal function. Interpolation search improves on binary search for uniformly distributed data.
+
+10. Greedy Algorithms
+Greedy algorithms make locally optimal choices at each step, hoping to find a global optimum. They work when the problem has the greedy-choice property and optimal substructure. Examples include activity selection, Huffman coding, and Kruskal's MST. Not all problems admit greedy solutions; dynamic programming is needed when local choices affect future options.
+
+11. Backtracking
+Backtracking builds candidates incrementally and abandons a candidate ("backtracks") as soon as it determines the candidate cannot lead to a valid solution. It is used for constraint satisfaction problems like N-Queens, Sudoku, and the subset sum problem. Pruning reduces the search space. Time complexity is often exponential in the worst case.
+
+12. Heaps and Priority Queues
+A heap is a complete binary tree satisfying the heap property: in a max-heap, each parent is greater than its children; in a min-heap, each parent is smaller. Heaps support insert and extract-min/max in O(log n). Priority queues are implemented using heaps. Heap sort runs in O(n log n). Heaps are used in Dijkstra's algorithm and scheduling.
+
+13. Tries (Prefix Trees)
+A trie is a tree-like data structure for storing strings where each node represents a character. Common prefixes share paths, making tries efficient for prefix-based searches. Insertion and lookup take O(m) where m is the string length. Tries are used in autocomplete, spell checking, and IP routing. Space can be high due to many pointers per node.
+
+14. Recursion
+Recursion is a technique where a function calls itself to solve smaller instances of the same problem. Every recursive function needs a base case to terminate and a recursive case that reduces the problem. Recursion uses the call stack; deep recursion can cause stack overflow. Tail recursion can be optimized by compilers. Recursion is natural for tree and graph traversals.
+
+15. Bit Manipulation
+Bit manipulation operates directly on binary representations. Common operations include AND, OR, XOR, NOT, left shift, and right shift. Tricks include checking if a number is a power of two (n & (n-1) == 0), counting set bits, and finding the single non-duplicate element. Bit manipulation is used in compression, cryptography, and low-level optimization.

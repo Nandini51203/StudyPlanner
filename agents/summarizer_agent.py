@@ -57,9 +57,11 @@ def _split_into_chunks(text):
     return chunks
 
 
-def _summarize_chunk(chunk_text, chunk_num, total_chunks):
+def _summarize_chunk(chunk_text, chunk_num, total_chunks, style_note=""):
     """Summarize a single chunk of text."""
     prompt = f"""You are a Summarizer Agent creating comprehensive study notes. This is chunk {chunk_num} of {total_chunks}.
+
+{style_note}
 
 Extract and summarize ALL important information from this text section. Include:
 - Key concepts and definitions
@@ -116,6 +118,8 @@ def _combine_summaries(chunk_summaries, original_text):
     prompt = f"""You are a Summarizer Agent creating final comprehensive study notes.
 
 Based on the following section summaries, create detailed, well-structured study notes.
+
+{style_note}
 
 REQUIREMENTS:
 - Include ALL major topics and subtopics from the source
@@ -179,10 +183,22 @@ SECTION SUMMARIES:
         }
 
 
-def run(text):
-    """Run hierarchical summarization on the input text."""
+_STYLE_NOTES = {
+    "concise": "CONCISE style: keep the summary brief — a short overview, only the most important points, and short definitions. Skip long explanations and extensive examples.",
+    "detailed": "DETAILED style: include comprehensive explanations, all definitions, formulas, examples, and revision notes.",
+}
+
+
+def run(text, style="detailed"):
+    """Run hierarchical summarization on the input text.
+
+    style: "concise" (short notes) or "detailed" (comprehensive notes).
+    Returns (summary_dict, source) where source is 'ai' or 'local'.
+    """
     if config.DEMO:
-        return dict(DEMO)
+        return dict(DEMO), "demo"
+
+    style_note = _STYLE_NOTES.get(style, _STYLE_NOTES["detailed"])
 
     # Split into chunks
     chunks = _split_into_chunks(text)
@@ -192,6 +208,8 @@ def run(text):
         prompt = f"""You are a Summarizer Agent creating comprehensive study notes.
 
 Create detailed, well-structured study notes from the following text.
+
+{style_note}
 
 REQUIREMENTS:
 - Include ALL major topics and subtopics
@@ -226,13 +244,115 @@ Return ONLY JSON with keys:
 
 TEXT:
 {text[:30000]}"""
-        return ask(prompt)
+        try:
+            return ask(prompt), "ai"
+        except Exception:
+            pass
 
     # Long document: hierarchical summarization
     chunk_summaries = []
     for i, chunk in enumerate(chunks):
-        summary = _summarize_chunk(chunk, i + 1, len(chunks))
+        summary = _summarize_chunk(chunk, i + 1, len(chunks), style_note)
         chunk_summaries.append(summary)
 
     # Combine into final comprehensive notes
-    return _combine_summaries(chunk_summaries, text)
+    try:
+        return _combine_summaries(chunk_summaries, text), "ai"
+    except Exception:
+        pass
+
+    # Local fallback: extract key information from the text
+    return _generate_local_summary(text, style), "local"
+
+
+def _generate_local_summary(text, style="detailed"):
+    """Generate a basic summary locally from the text when AI is unavailable.
+
+    Extracts key sentences, identifies main topics, and creates a structured
+    summary without any API calls.
+    """
+    import re
+
+    if not text or not text.strip():
+        return {
+            "title": "Study Notes",
+            "overview": "No content available to summarize.",
+            "key_concepts": [],
+            "definitions": [],
+            "main_points": [],
+            "formulas": [],
+            "examples": [],
+            "processes": [],
+            "comparisons": [],
+            "advantages": [],
+            "disadvantages": [],
+            "revision_notes": [],
+            "sections": [],
+        }
+
+    # Extract sentences
+    sentences = re.split(r'[.!?]\s+', text)
+    sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
+
+    # Extract key concepts (capitalized words and technical terms)
+    words = re.findall(r'\b[A-Z][a-zA-Z]{3,}\b', text)
+    word_counts = {}
+    for w in words:
+        word_counts[w] = word_counts.get(w, 0) + 1
+    key_concepts = sorted(word_counts.keys(), key=lambda w: word_counts[w], reverse=True)[:10]
+
+    # Extract definitions (look for "X is/are Y" patterns)
+    definitions = []
+    for sent in sentences[:20]:
+        match = re.match(r'^([A-Z][a-zA-Z\s]+)\s+(is|are|refers to|means)\s+(.+)', sent)
+        if match:
+            definitions.append({
+                "term": match.group(1).strip(),
+                "meaning": match.group(3).strip()
+            })
+
+    # Extract formulas (lines with mathematical symbols)
+    formulas = []
+    for line in text.split('\n'):
+        if re.search(r'[=+\-*/^∫∑∏√∞≈≠≤≥]', line) and len(line.strip()) > 3:
+            formulas.append(line.strip())
+
+    # Build sections from paragraphs
+    sections = []
+    paragraphs = [p.strip() for p in text.split('\n\n') if len(p.strip()) > 20]
+    for i, para in enumerate(paragraphs[:10]):
+        # Use first sentence as title
+        first_sent = re.split(r'[.!?]', para)[0][:60]
+        sections.append({
+            "title": first_sent,
+            "content": para[:500]
+        })
+
+    # Main points from first sentences of paragraphs
+    main_points = []
+    for para in paragraphs[:15]:
+        first_sent = re.split(r'[.!?]', para)[0]
+        if len(first_sent) > 15:
+            main_points.append(first_sent)
+
+    # Revision notes
+    revision_notes = main_points[:5] if main_points else sentences[:5]
+
+    # Title from first line or first sentence
+    title = text.split('\n')[0][:80] if text else "Study Notes"
+
+    return {
+        "title": title,
+        "overview": sentences[0] if sentences else "No content available.",
+        "key_concepts": key_concepts,
+        "definitions": definitions[:10],
+        "main_points": main_points[:15],
+        "formulas": formulas[:10],
+        "examples": [],
+        "processes": [],
+        "comparisons": [],
+        "advantages": [],
+        "disadvantages": [],
+        "revision_notes": revision_notes,
+        "sections": sections,
+    }
